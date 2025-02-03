@@ -1,17 +1,53 @@
 const express = require('express')
+const session = require ('express-session')
 const app = express()
 const port = 3000
 const sqlite3 = require('sqlite3').verbose()
 const db = new sqlite3.Database('Carrito.db')
 
+app.use(session({
+    secret:'SECRETOINSANOWAZA',
+    resave: true,
+    saveUninitialized:true
+}))
+
 app.use(express.json())
+
+
+function isAuthenticated (req, res, next) {
+    if (req.session.user) next()
+    else res.status(500).send('Necesitas Iniciar Sesion')
+  }
+
+app.get('/home',isAuthenticated, (req, res) => {
+    user = (req.session.user).charAt(0).toUpperCase() + (req.session.user).slice(1);
+    res.send(200, `Bienvenido, ${user}`  )
+})
+
+
+app.post('/login', (req, res) => {
+    user = (req.body.user).toString().toLowerCase()
+    console.log(user)
+    password = req.body.password 
+    if (user == 'rugroso' && password == 'pass123') {
+        req.session.user = req.body.user
+        req.session.password = req.body.password
+        req.session.save(function (err) {
+            if (err) return next(err)
+            res.redirect('/home')
+          })
+    } else {
+        res.status(401).send('El usuario o la contraseña no son correctos')
+    }
+})
 
 
 //PARA CARRITO |||||||
 const obtenerEspecial = ( req, res ) => {
   const { id } = req.params;
+  query =  query = 'SELECT C.ID, C.Usuario, C.total, sum(p.precio * pc.Cantidad) as Precio_Total FROM CARRITO C INNER JOIN  Productos_Carrito PC ON PC.CarritoId=C.ID INNER JOIN PRODUCTO P ON P.ID=PC.ProductoId WHERE C.ID = ? GROUP BY C.ID, C.Usuario, C.total'
   try {
-      db.get('SELECT * FROM Carrito WHERE id = ?', [id], (err, row) => {
+      db.all(query, [id], (err, row) => {
           if (err) {
               console.error(err.message);
               return res.status(500).send('Error al obtener el elemento');
@@ -30,9 +66,10 @@ const obtenerEspecial = ( req, res ) => {
 }
 
 //Obtener todos los carritos
-app.get('/carrito', async (req, res) => {
+app.get('/carrito',isAuthenticated, async (req, res) => {
+    query = 'SELECT C.ID, C.Usuario, C.total, sum(p.precio * pc.Cantidad) as Precio_Total FROM CARRITO C INNER JOIN  Productos_Carrito PC ON PC.CarritoId=C.ID INNER JOIN PRODUCTO P ON P.ID=PC.ProductoId GROUP BY C.ID, C.Usuario, C.total'
     try {
-        db.all('SELECT * FROM carrito', (err, rows) => {
+        db.all(query, (err, rows) => {
             if (err) {
                 console.error(err.message)
                 return res.status(500).send('Error interno del servidor')
@@ -46,30 +83,30 @@ app.get('/carrito', async (req, res) => {
 })
 
 //Obtener un carrito en especifico
-app.get('/carrito/:id', async (req, res) => {
+app.get('/carrito/:id',isAuthenticated, async (req, res) => {
   obtenerEspecial(req, res)
 });
 
 //Agregar un nuevo carrito
-app.post('/carrito', (req, res) => {
-    const { nombre, cantidad } = req.body
-    if (!nombre) {
-        return res.status(400).send('El nombre y la cantidad se requieren')
+app.post('/carrito',isAuthenticated, (req, res) => {
+    const { usuario } = req.body
+    if (!usuario) {
+        return res.status(400).send('El usuario es requerido')
     }
 
-    const stmt = db.prepare('INSERT INTO Carrito (Nombre, Cantidad) VALUES (?, ?)')
-    stmt.run(nombre, cantidad, function(err) {
+    const stmt = db.prepare('INSERT INTO Carrito (Usuario) VALUES (?)')
+    stmt.run(usuario, function(err) {
         if (err) {
             console.error(err.message)
             return res.status(500).send('Error al agregar elemento')
         }
-        res.status(201).send({ id: this.lastID, cantidad })
+        res.status(201).send({ id: this.lastID, usuario })
     })
     stmt.finalize()
 })
 
 //Editar la Cantidad | Esto esta puesto en caso de que sea necesario, en realidad no deberia de emplearse debido a que la cantidad se actualiza de forma automatica
-app.put('/carrito/:id', (req, res) => {
+app.put('/carrito/:id',isAuthenticated, (req, res) => {
     const { id } = req.params
     const { Total } = req.body
 
@@ -90,8 +127,9 @@ app.put('/carrito/:id', (req, res) => {
     })
     stmt.finalize()
 })
+
 //Eliminar todos los carritos
-app.delete('/carrito/BorrarTodo', (req, res) => {
+app.delete('/carrito/BorrarTodo',isAuthenticated, (req, res) => {
   db.run('DELETE FROM Carrito', function(err) {
       if (err) {
           console.error(err.message)
@@ -102,7 +140,7 @@ app.delete('/carrito/BorrarTodo', (req, res) => {
 })
 
 //Eliminar un carrito específico
-app.delete('/carrito/:id', (req, res) => {
+app.delete('/carrito/:id',isAuthenticated, (req, res) => {
     const { id } = req.params
     obtenerEspecial(req, res)
     const stmt = db.prepare('DELETE FROM Carrito WHERE id = ?')
@@ -138,7 +176,7 @@ const obtenerProductoEspecial = (req, res) => {
   }
   
   // Obtener todos los productos
-  app.get('/producto', async (req, res) => {
+  app.get('/productos',isAuthenticated, async (req, res) => {
       try {
           db.all('SELECT * FROM Producto', (err, rows) => {
               if (err) {
@@ -154,12 +192,12 @@ const obtenerProductoEspecial = (req, res) => {
   })
   
   // Obtener un producto específico
-  app.get('/producto/:id', async (req, res) => {
+  app.get('/productos/:id',isAuthenticated, async (req, res) => {
     obtenerProductoEspecial(req, res)
   })
   
   // Crear nuevo producto
-  app.post('/producto', (req, res) => {
+  app.post('/productos',isAuthenticated, (req, res) => {
       const { nombre, precio } = req.body
       if (!nombre || !precio) {
           return res.status(400).send('Nombre y precio son requeridos')
@@ -181,7 +219,7 @@ const obtenerProductoEspecial = (req, res) => {
   })
   
   // Se actualiza el nombre del producto y su precio
-  app.put('/producto/:id', (req, res) => {
+  app.put('/productos/:id',isAuthenticated, (req, res) => {
       const { id } = req.params
       const { nombre, precio } = req.body
   
@@ -208,7 +246,7 @@ const obtenerProductoEspecial = (req, res) => {
   })
   
   // Eliminar todos los productos (Solo funcionaría en el caso muy específico de que no se encuentre ningún producto en ningún carrito)
-  app.delete('/producto/borrar_todo', (req, res) => {
+  app.delete('/productos/borrar_todo',isAuthenticated, (req, res) => {
     db.run('DELETE FROM Producto', function(err) {
         if (err) {
             console.error(err.message)
@@ -219,7 +257,7 @@ const obtenerProductoEspecial = (req, res) => {
   })
   
   // Eliminar un producto específico (Lo cual, no debería funcionar, dado el caso de que esté en carrito de alguien, debido a llaves foraneas)
-  app.delete('/producto/:id', (req, res) => {
+  app.delete('/productos/:id',isAuthenticated, (req, res) => {
       const { id } = req.params
       obtenerProductoEspecial(req, res)
       const stmt = db.prepare('DELETE FROM Producto WHERE id = ?')
@@ -236,7 +274,7 @@ const obtenerProductoEspecial = (req, res) => {
 //SECCION DE PRODUCTOS CARRITO ||||||
 
 //Obtiene todos los carritos y los productos que les corresponden
-app.get('/productos_carrito', async (req, res) => {
+app.get('/productos_carrito',isAuthenticated, async (req, res) => {
     try {
         db.all('Select C.Usuario, P.Nombre, Cantidad from Productos_Carrito PC inner join Carrito C ON C.id=PC.CarritoId inner join Producto P ON P.id = PC.ProductoId', (err, rows) => {
             if (err) {
@@ -252,7 +290,7 @@ app.get('/productos_carrito', async (req, res) => {
 })
 
 //Productos en carrito, este funciona poniendo el id del carrito (el cual correspondría con el usuario, pero para efectos prácticos, se establece como carrito)
-app.get ('/productos_carrito/:id', async(req, res) => {
+app.get ('/productos_carrito/:id',isAuthenticated, async(req, res) => {
     const { id } = req.params
     query = 'Select C.Usuario, P.Nombre, Cantidad from Productos_Carrito PC inner join Carrito C ON C.id=PC.CarritoId inner join Producto P ON P.id = PC.ProductoId WHERE C.id = ?'
     try {
@@ -274,35 +312,35 @@ app.get ('/productos_carrito/:id', async(req, res) => {
 })
 
   // Meter nuevo producto al carrito
-  app.post('/productos_carrito/', (req, res) => {
-    const { CarritoId, ProductoId, Cantidad } = req.body
-    if (!CarritoId || !ProductoId || !Cantidad) {
+  app.post('/productos_carrito/',isAuthenticated, (req, res) => {
+    const { carritoId, productoId, cantidad } = req.body
+    if (!carritoId || !productoId || !cantidad) {
         return res.status(400).send('Se requieren el Id de carrito, Id de producto y la cantidad a agregar')
     }
     const stmt = db.prepare('INSERT INTO Productos_Carrito (CarritoId, ProductoId, Cantidad) VALUES (?, ?, ?)')
-    stmt.run(CarritoId, ProductoId,Cantidad, function(err) {
+    stmt.run(carritoId, productoId,cantidad, function(err) {
         if (err) {
             console.error(err.message)
             return res.status(500).send('Error al agregar producto al carrito')
         }
         res.status(201).send({ 
-            CarritoId,
-            ProductoId, 
-            Cantidad 
+            carritoId,
+            productoId, 
+            cantidad 
         })
     })
     stmt.finalize()
 })
 
 // Se actualiza la cantidad de un producto específico
-app.put('/productos_carrito/:ProductoId/carrito/:CarritoId', async (req, res) => {
-    const { ProductoId, CarritoId } = req.params;
-    const { Cantidad } = req.body;
+app.put('/productos_carrito/:productoId/carrito/:carritoId',isAuthenticated, async (req, res) => {
+    const { productoId, carritoId } = req.params;
+    const { cantidad } = req.body;
 
     const query = 'UPDATE Productos_Carrito SET Cantidad = ? WHERE ProductoId = ? AND CarritoId = ?';
 
     try {
-        db.run(query, [Cantidad, ProductoId, CarritoId], function (err) {
+        db.run(query, [cantidad, productoId, carritoId], function (err) {
             if (err) {
                 console.error("Error en la consulta:", err.message);
                 return res.status(500).json("No se pudo actualizar la cantidad");
@@ -323,12 +361,12 @@ app.put('/productos_carrito/:ProductoId/carrito/:CarritoId', async (req, res) =>
 
 
 // Con esto es posible eliminar un producto asociado a un carrito
-app.delete('/productos_carrito/producto/:ProductoId/carrito/:CarritoId', async (req, res) => {
-    const { ProductoId, CarritoId } = req.params; 
+app.delete('/productos_carrito/producto/:productoId/carrito/:carritoId',isAuthenticated, async (req, res) => {
+    const { productoId, carritoId } = req.params; 
 
     const stmt = db.prepare('DELETE FROM Productos_Carrito WHERE ProductoId = ? AND CarritoId = ?');
 
-    stmt.run(ProductoId, CarritoId, function (err) {
+    stmt.run(productoId, carritoId, function (err) {
         if (err) {
             console.error(err.message);
             return res.status(500).send('Error al eliminar producto');
@@ -345,12 +383,12 @@ app.delete('/productos_carrito/producto/:ProductoId/carrito/:CarritoId', async (
 });
 
 //Con esto es posible eliminar todos los productos que corresponden a un carrito
-app.delete('/productos_carrito/carrito/:CarritoId', async (req, res) => {
-    const { CarritoId } = req.params; 
+app.delete('/productos_carrito/carrito/:carritoId',isAuthenticated, async (req, res) => {
+    const { carritoId } = req.params; 
 
     const stmt = db.prepare('DELETE FROM Productos_Carrito WHERE CarritoId = ?');
 
-    stmt.run(CarritoId, function (err) {
+    stmt.run(carritoId, function (err) {
         if (err) {
             console.error(err.message);
             return res.status(500).send('Error al eliminar productos del carrito');
@@ -367,6 +405,6 @@ app.delete('/productos_carrito/carrito/:CarritoId', async (req, res) => {
 });
 
 //Para ver su ejecución
-app.listen(port, () => {
-    console.log(`Servidor ejecutándose en http://localhost:${port}`)
-})
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Servidor ejecutándose en http://0.0.0.0:${port}`);
+  });
