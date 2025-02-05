@@ -101,8 +101,8 @@ app.get('/carrito/:id',isAuthenticated, async (req, res) => {
 })
 
 //Obtener los carritos con el total
-app.get('/carrito/preciototal',isAuthenticated, async (req, res) => {
-    query = 'SELECT C.ID, C.Usuario, C.total, sum(p.precio * pc.Cantidad) as Precio_Total FROM CARRITO C INNER JOIN  Productos_Carrito PC ON PC.CarritoId=C.ID INNER JOIN PRODUCTO P ON P.ID=PC.ProductoId GROUP BY C.ID, C.Usuario, C.total'
+app.get('/carritocontotal',isAuthenticated, async (req, res) => {
+    query = 'SELECT C.ID, C.Usuario, C.total, SUM(P.precio * PC.Cantidad) AS Precio_Total FROM CARRITO C INNER JOIN Productos_Carrito PC ON PC.CarritoId = C.ID INNER JOIN PRODUCTO P ON P.ID = PC.ProductoId GROUP BY C.ID, C.Usuario, C.total'
     try {
         db.all(query, (err, rows) => {
             if (err) {
@@ -117,7 +117,7 @@ app.get('/carrito/preciototal',isAuthenticated, async (req, res) => {
     }
 })
 
-app.get('/carrito/preciototal/:id',isAuthenticated, async (req, res) => {
+app.get('/carritocontotal/:id',isAuthenticated, async (req, res) => {
     const { id } = req.params;
     query = 'SELECT C.ID, C.Usuario, C.total, sum(p.precio * pc.Cantidad) as Precio_Total FROM CARRITO C INNER JOIN  Productos_Carrito PC ON PC.CarritoId=C.ID INNER JOIN PRODUCTO P ON P.ID=PC.ProductoId WHERE C.ID = ? GROUP BY C.ID, C.Usuario, C.total'
     try {
