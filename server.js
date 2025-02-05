@@ -99,6 +99,23 @@ app.get('/carrito/preciototal',isAuthenticated, async (req, res) => {
     }
 })
 
+app.get('/carrito/preciototal/:id',isAuthenticated, async (req, res) => {
+    const { id } = req.params;
+    query = 'SELECT C.ID, C.Usuario, C.total, sum(p.precio * pc.Cantidad) as Precio_Total FROM CARRITO C INNER JOIN  Productos_Carrito PC ON PC.CarritoId=C.ID INNER JOIN PRODUCTO P ON P.ID=PC.ProductoId WHERE C.ID = ? GROUP BY C.ID, C.Usuario, C.total'
+    try {
+        db.all(query, [id], (err, rows) => {
+            if (err) {
+                console.error(err.message)
+                return res.status(500).send('Error interno del servidor')
+            }
+            res.send(rows)
+        })
+    } catch (error) {
+        console.error('Error fetching data:', error)
+        res.status(500).send('Error interno del servidor')
+    }
+})
+
 
 //Obtener un carrito en especifico
 app.get('/carrito/:id',isAuthenticated, async (req, res) => {
