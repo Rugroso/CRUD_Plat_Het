@@ -67,6 +67,23 @@ const obtenerEspecial = ( req, res ) => {
 
 //Obtener todos los carritos
 app.get('/carrito',isAuthenticated, async (req, res) => {
+    query = 'SELECT * From Carrito'
+    try {
+        db.all(query, (err, rows) => {
+            if (err) {
+                console.error(err.message)
+                return res.status(500).send('Error interno del servidor')
+            }
+            res.send(rows)
+        })
+    } catch (error) {
+        console.error('Error fetching data:', error)
+        res.status(500).send('Error interno del servidor')
+    }
+})
+
+//Obtener los carritos con el total
+app.get('/carrito/preciototal',isAuthenticated, async (req, res) => {
     query = 'SELECT C.ID, C.Usuario, C.total, sum(p.precio * pc.Cantidad) as Precio_Total FROM CARRITO C INNER JOIN  Productos_Carrito PC ON PC.CarritoId=C.ID INNER JOIN PRODUCTO P ON P.ID=PC.ProductoId GROUP BY C.ID, C.Usuario, C.total'
     try {
         db.all(query, (err, rows) => {
@@ -81,6 +98,7 @@ app.get('/carrito',isAuthenticated, async (req, res) => {
         res.status(500).send('Error interno del servidor')
     }
 })
+
 
 //Obtener un carrito en especifico
 app.get('/carrito/:id',isAuthenticated, async (req, res) => {
@@ -129,7 +147,7 @@ app.put('/carrito/:id',isAuthenticated, (req, res) => {
 })
 
 //Eliminar todos los carritos
-app.delete('/carrito/BorrarTodo',isAuthenticated, (req, res) => {
+app.delete('',isAuthenticated, (req, res) => {
   db.run('DELETE FROM Carrito', function(err) {
       if (err) {
           console.error(err.message)
@@ -288,6 +306,7 @@ app.get('/productos_carrito',isAuthenticated, async (req, res) => {
         res.status(500).send('Error interno del servidor')
     }
 })
+
 
 //Productos en carrito, este funciona poniendo el id del carrito (el cual correspondría con el usuario, pero para efectos prácticos, se establece como carrito)
 app.get ('/productos_carrito/:id',isAuthenticated, async(req, res) => {
