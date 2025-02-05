@@ -117,6 +117,7 @@ app.get('/carritocontotal',isAuthenticated, async (req, res) => {
     }
 })
 
+//Obtiene el carrito con el total en base en su id
 app.get('/carritocontotal/:id',isAuthenticated, async (req, res) => {
     const { id } = req.params;
     query = 'SELECT C.ID, C.Usuario, C.total, sum(p.precio * pc.Cantidad) as Precio_Total FROM CARRITO C INNER JOIN  Productos_Carrito PC ON PC.CarritoId=C.ID INNER JOIN PRODUCTO P ON P.ID=PC.ProductoId WHERE C.ID = ? GROUP BY C.ID, C.Usuario, C.total'
