@@ -1,0 +1,26 @@
+{
+  "name": "crud_plat_het",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/Rugroso/CRUD_Plat_Het#readme",
+  "bugs": {
+    "url": "https://github.com/Rugroso/CRUD_Plat_Het/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rugroso/CRUD_Plat_Het.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-session": "^1.18.1",
+    "sqlite3": "^5.1.7"
+  }
+}
